@@ -1,6 +1,13 @@
-import { signIn } from '@/lib/auth';
+import { auth, signIn } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
-export default function SignIn() {
+export default async function SignIn() {
+  const session = await auth();
+
+  if (session) {
+    return redirect('/');
+  }
+
   return (
     <form
       action={async () => {
