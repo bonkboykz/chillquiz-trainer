@@ -48,9 +48,8 @@ export default function DashboardLayout({
             <SearchInput />
             <User />
           </header>
-          <main className="grid flex-1 items-start gap-2 p-4 sm:px-6 sm:py-0 md:gap-4 bg-muted/40">
-            {children}
-          </main>
+          {/* grid flex-1 items-start gap-2 p-4 sm:px-6 sm:py-0 md:gap-4  */}
+          <main className="bg-muted/40">{children}</main>
         </div>
         <Analytics />
       </main>
@@ -171,7 +170,7 @@ function DashboardBreadcrumb() {
   return (
     <Breadcrumb className="hidden md:flex">
       <BreadcrumbList>
-        <BreadcrumbItem>
+        {/* <BreadcrumbItem>
           <BreadcrumbLink asChild>
             <Link href="#">Dashboard</Link>
           </BreadcrumbLink>
@@ -185,7 +184,7 @@ function DashboardBreadcrumb() {
         <BreadcrumbSeparator />
         <BreadcrumbItem>
           <BreadcrumbPage>All Products</BreadcrumbPage>
-        </BreadcrumbItem>
+        </BreadcrumbItem> */}
       </BreadcrumbList>
     </Breadcrumb>
   );
