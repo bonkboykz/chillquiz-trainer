@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { parse } from 'path';
 import { auth } from '@/lib/auth';
 import { Readable } from 'stream';
+import { buffer } from 'node:stream/consumers';
 
 const CONTENT_TYPES: { [key: string]: string } = {
   '.mp3': 'audio/mpeg',
@@ -12,6 +13,15 @@ const CONTENT_TYPES: { [key: string]: string } = {
   '.wav': 'audio/wav',
   '.m4a': 'audio/x-m4a'
 };
+
+function streamToBuffer(stream: Readable): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const _buf: Uint8Array[] = [];
+    stream.on('data', (chunk) => _buf.push(chunk));
+    stream.on('end', () => resolve(Buffer.concat(_buf)));
+    stream.on('error', (err) => reject(err));
+  });
+}
 
 function nodeStreamToWebStream(nodeStream: Readable): ReadableStream {
   return new ReadableStream({
@@ -103,6 +113,10 @@ export async function GET(
       });
 
       const stream = createReadStream(filePath, { start, end });
+      // buffer the stream to avoid issues with the browser
+      // const buffer = Buffer.from(await streamToBuffer(stream));
+      // const streamBuffer = await buffer(stream);
+
       return new NextResponse(nodeStreamToWebStream(stream), {
         status: 206,
         headers

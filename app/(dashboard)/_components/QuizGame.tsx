@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   PlayCircle,
   PauseCircle,
@@ -42,7 +42,7 @@ const QuizGame = ({ quizId }: { quizId: string }) => {
 
   // console.log('currentQuestion', currentQuestion);
 
-  const { play, pause, isPlaying, currentTime, duration, error } =
+  const { play, pause, isPlaying, currentTime, duration, error, audioRef } =
     useAudioPlayback(currentQuestion?.audioId ?? '', {
       onTimeUpdate: (time) => {
         if (timeLeft === null) return;
@@ -72,14 +72,10 @@ const QuizGame = ({ quizId }: { quizId: string }) => {
   };
 
   const playCurrentSegment = async () => {
-    if (!currentQuestion) return;
+    if (!currentQuestion || !audioRef.current) return;
 
     try {
-      const audio = document.querySelector('audio');
-      if (audio) {
-        audio.muted = isMuted;
-      }
-
+      audioRef.current.muted = isMuted;
       await play(currentQuestion.startTime, currentQuestion.endTime);
       setTimeLeft(currentQuestion.endTime - currentQuestion.startTime);
     } catch (error) {
@@ -186,6 +182,12 @@ const QuizGame = ({ quizId }: { quizId: string }) => {
 
   return (
     <div className="space-y-6">
+      <audio
+        ref={audioRef}
+        src={currentQuestion ? `/api/audio/${currentQuestion.audioId}` : ''}
+        preload="auto"
+        style={{ display: 'none' }}
+      />
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">
           Question {currentQuestionIndex + 1} of {questions.length}

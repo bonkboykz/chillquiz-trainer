@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, RefObject } from 'react';
 
 interface AudioPlaybackOptions {
   onTimeUpdate?: (currentTime: number) => void;
   onEnded?: () => void;
   onError?: (error: Error) => void;
+  audioElement?: RefObject<HTMLAudioElement>;
 }
 
 interface AudioPlaybackControl {
@@ -14,6 +15,7 @@ interface AudioPlaybackControl {
   currentTime: number;
   duration: number;
   error: Error | null;
+  audioRef: RefObject<HTMLAudioElement | null>;
 }
 
 export function useAudioPlayback(
@@ -25,26 +27,19 @@ export function useAudioPlayback(
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<Error | null>(null);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const endTimeRef = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    if (!audioId || audioRef.current) {
-      return;
-    }
+    if (!audioId || !audioRef.current) return;
 
-    const audio = new Audio();
-    audioRef.current = audio;
+    const audio = audioRef.current;
 
-    const audioUrl = `/api/audio/${audioId}`;
-
-    audio.src = audioUrl;
-
-    audio.addEventListener('loadedmetadata', () => {
+    const handleLoadedMetadata = () => {
       setDuration(audio.duration);
-    });
+    };
 
-    audio.addEventListener('timeupdate', () => {
+    const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
       options.onTimeUpdate?.(audio.currentTime);
 
@@ -54,47 +49,39 @@ export function useAudioPlayback(
         endTimeRef.current = null;
         options.onEnded?.();
       }
-    });
+    };
 
-    audio.addEventListener('ended', () => {
+    const handleEnded = () => {
       setIsPlaying(false);
       options.onEnded?.();
-    });
+    };
 
-    const handleError = (e: ErrorEvent | Event) => {
+    const handleError = async (e: ErrorEvent | Event) => {
       console.error('Audio error:', e);
-      // Check network error
+
       if (!navigator.onLine) {
-        setError(new Error('No internet connection'));
+        const error = new Error('No internet connection');
+        setError(error);
+        options.onError?.(error);
         return;
       }
 
-      // Check if audio file exists
-      fetch(audioUrl, { method: 'HEAD' })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-        })
-        .catch((fetchError) => {
-          console.error('Fetch error:', fetchError);
-          setError(new Error(`Failed to load audio: ${fetchError.message}`));
-        });
-
-      const errorMessage =
-        e instanceof ErrorEvent ? e.message : 'Error playing audio';
-      const error = new Error(errorMessage);
+      const error = new Error('Error playing audio');
       setError(error);
       options.onError?.(error);
       setIsPlaying(false);
     };
 
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
     audio.addEventListener('error', handleError);
 
     return () => {
-      audio.pause();
-      audio.src = '';
-      audio.remove();
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
     };
   }, [audioId, options]);
 
@@ -112,12 +99,15 @@ export function useAudioPlayback(
         endTimeRef.current = null;
       }
 
+      setError(null);
       await audioRef.current.play();
       setIsPlaying(true);
-      setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error('Error playing audio'));
-      throw err;
+      const error =
+        err instanceof Error ? err : new Error('Error playing audio');
+      setError(error);
+      setIsPlaying(false);
+      throw error;
     }
   };
 
@@ -131,6 +121,7 @@ export function useAudioPlayback(
     if (!audioRef.current) return;
     audioRef.current.pause();
     audioRef.current.currentTime = 0;
+    endTimeRef.current = null;
     setIsPlaying(false);
   };
 
@@ -141,6 +132,7 @@ export function useAudioPlayback(
     isPlaying,
     currentTime,
     duration,
-    error
+    error,
+    audioRef
   };
 }
