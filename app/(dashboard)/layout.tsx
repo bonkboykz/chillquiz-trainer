@@ -31,12 +31,20 @@ import { VercelLogo } from '@/components/icons';
 import Providers from './providers';
 import { NavItem } from './nav-item';
 import { SearchInput } from './search';
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+
+  if (!session) {
+    return redirect('/api/auth/signin');
+  }
+
   return (
     <Providers>
       <main className="flex min-h-screen w-full flex-col bg-muted/40">
